@@ -133,6 +133,7 @@ contract TradingCenterTest is Test {
     proxyTradingCenterV2.exchangeV2(usdt, 10 ether);
     proxyTradingCenterV2.exchangeV2(usdt, 10 ether);
     vm.stopPrank();
+    
 
     // Assert users's balances are 0
     assertEq(usdt.balanceOf(user1), 0);
