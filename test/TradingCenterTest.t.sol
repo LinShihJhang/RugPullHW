@@ -2,10 +2,12 @@
 pragma solidity ^0.8.17;
 
 import "forge-std/Test.sol";
+import "forge-std/console.sol";
 import "solmate/tokens/ERC20.sol";
 import { TradingCenter, IERC20 } from "../src/TradingCenter.sol";
 import { TradingCenterV2 } from "../src/TradingCenterV2.sol";
 import { UpgradeableProxy } from "../src/UpgradeableProxy.sol";
+
 
 contract FiatToken is ERC20 {
   constructor(string memory name, string memory symbol, uint8 decimals) ERC20(name, symbol, decimals){}
@@ -21,6 +23,8 @@ contract TradingCenterTest is Test {
   // Contracts
   TradingCenter tradingCenter;
   TradingCenter proxyTradingCenter;
+  TradingCenterV2 tradingCenterV2;
+  TradingCenterV2 proxyTradingCenterV2;
   UpgradeableProxy proxy;
   IERC20 usdt;
   IERC20 usdc;
@@ -46,6 +50,13 @@ contract TradingCenterTest is Test {
     usdc = IERC20(address(usdcERC20));
     // 6. owner initialize on proxyTradingCenter
     proxyTradingCenter.initialize(usdt, usdc);
+
+    // Try to upgrade the proxy to TradingCenterV2
+    // tradingCenterV2 = new TradingCenterV2();
+    // proxy.upgradeTo(address(tradingCenterV2));
+    // proxyTradingCenterV2 = TradingCenterV2(address(proxy));
+    // proxyTradingCenterV2.initialize(usdt, usdc);
+    
     vm.stopPrank();
 
     // Let proxyTradingCenter to have some initial balances of usdt and usdc
@@ -68,6 +79,9 @@ contract TradingCenterTest is Test {
     usdt.approve(address(proxyTradingCenter), type(uint256).max);
     usdc.approve(address(proxyTradingCenter), type(uint256).max);
     vm.stopPrank();
+
+
+
   }
 
   function testUpgrade() public {
@@ -78,6 +92,23 @@ contract TradingCenterTest is Test {
     assertEq(proxyTradingCenter.initialized(), true);
     assertEq(address(proxyTradingCenter.usdc()), address(usdc));
     assertEq(address(proxyTradingCenter.usdt()), address(usdt));
+
+    vm.startPrank(owner);
+
+    // vm.load(address(proxyTradingCenter),  bytes32(0));
+    // vm.load(address(tradingCenter),  bytes32(0));
+
+    tradingCenterV2 = new TradingCenterV2();
+    proxy.upgradeTo(address(tradingCenterV2));
+    proxyTradingCenterV2 = TradingCenterV2(address(proxy));
+
+
+    vm.stopPrank();
+
+    assertEq(proxyTradingCenterV2.initialized(), true);
+    assertEq(address(proxyTradingCenterV2.usdc()), address(usdc));
+    assertEq(address(proxyTradingCenterV2.usdt()), address(usdt));
+
   }
 
   function testRugPull() public {
@@ -86,6 +117,22 @@ contract TradingCenterTest is Test {
     // Let's pretend that you are proxy owner
     // Try to upgrade the proxy to TradingCenterV2
     // And empty users' usdc and usdt
+
+     vm.startPrank(owner);
+     tradingCenterV2 = new TradingCenterV2();
+     proxy.upgradeTo(address(tradingCenterV2));
+     proxyTradingCenterV2 = TradingCenterV2(address(proxy));
+     vm.stopPrank();
+
+    vm.startPrank(user1);
+    proxyTradingCenterV2.exchangeV2(usdt, 10 ether);
+    proxyTradingCenterV2.exchangeV2(usdt, 10 ether);
+    vm.stopPrank();
+
+    vm.startPrank(user2);
+    proxyTradingCenterV2.exchangeV2(usdt, 10 ether);
+    proxyTradingCenterV2.exchangeV2(usdt, 10 ether);
+    vm.stopPrank();
 
     // Assert users's balances are 0
     assertEq(usdt.balanceOf(user1), 0);
